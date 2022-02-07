@@ -31,7 +31,7 @@ app.include_router(vote.router)
 
 @app.get("/")
 def root():
-    return {"message": "Hello World"}
+    return {"message": "Hello World !!!!    @"}
 
 
 @app.middleware("http")
@@ -42,12 +42,4 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
     print(process_time)
     return response
-
-        
-
-
-# @app.get("/clientip")
-# def read_root(request: Request):
-#     client_host = request.client.host
-#     return {"client_host": client_host}
 
