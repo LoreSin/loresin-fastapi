@@ -20,7 +20,7 @@ def vote(vote: schemas.Vote, db: Session = Depends(get_db),
     
     vote_query = db.query(models.Vote).filter(
         models.Vote.post_id == vote.post_id, models.Vote.user_id == current_user.id)
-    print(vote_query)
+    # print(vote_query)
     found_vote = vote_query.first()
     if (vote.dir == 1):
         if found_vote:

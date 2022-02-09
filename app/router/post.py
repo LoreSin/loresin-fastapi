@@ -18,8 +18,7 @@ def get_posts(db: Session = Depends(get_db), current_user:models.User = Depends(
     # all_posts = db.query(models.Post).filter(models.Post.owner_id==current_user.id).limit(limit=limit).offset(offset=offset).all()
     # all_posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit=limit).offset(offset=skip).all()
     result = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).join(
-        models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id). \
-            filter(models.Post.title.contains(search)).limit(limit=limit).offset(offset=skip).all()
+        models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).filter(models.Post.title.contains(search)).limit(limit=limit).offset(offset=skip).all()
     
     print(result)
     return sorted(result, key=lambda x : x.votes, reverse=True)
@@ -39,8 +38,10 @@ def create_posts(post: schemas.PostCreate,
 @router.get("/{id}", response_model=schemas.PostOut)
 def get_post(id:int, db: Session = Depends(get_db), current_user:models.User = Depends(oauth2.get_current_user)):
     # post = db.query(models.Post).filter_by(id=id).one_or_none()
-    post = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).join(
-        models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).first()
+    post = db.query(models.Post, func.count(models.Vote.post_id).label(
+        "votes")).join(
+            models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).filter(models.Post.id==id).first()
+        # models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).one_or_none()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail=f"post with id: {id} was not found")
@@ -66,7 +67,7 @@ def delete_post(id:int, db: Session = Depends(get_db), current_user:models.User 
 
 
 @router.put("/{id}", response_model=schemas.Post)
-def update_post(id:int, update_post:schemas.Post, db: Session = Depends(get_db), current_user:models.User = Depends(oauth2.get_current_user)):
+def update_post(id:int, update_post:schemas.PostCreate, db: Session = Depends(get_db), current_user:models.User = Depends(oauth2.get_current_user)):
     post_query = db.query(models.Post).filter(models.Post.id==id)
     post = post_query.first()
     if not post:
