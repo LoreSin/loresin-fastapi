@@ -1,151 +1,147 @@
-from turtle import update
-from typing import List
-from venv import create
-from app import schemas
 import pytest
+from app import schemas
 
 
 def test_get_all_post(authorized_client, test_posts):
-    res = authorized_client.get('/posts/')
+    res = authorized_client.get("/posts/")
+
     def validate(post):
         return schemas.PostOut(**post)
-    
+
     posts_map = map(validate, res.json())
     posts_list = list(posts_map)
-    
-    assert len(res.json()) == len(test_posts)
+
+    assert len(posts_list) == len(test_posts)
     assert res.status_code == 200
 
-    
+
 def test_unauthorized_user_get_all_posts(client, test_posts):
-    res = client.get('/posts/')
+    res = client.get("/posts/")
     assert res.status_code == 401
 
 
 def test_unauthorized_user_get_one_post(client, test_posts):
-    res = client.get(f'/posts/{test_posts[0].id}')
+    res = client.get(f"/posts/{test_posts[0].id}")
     assert res.status_code == 401
-    
-    
+
+
 def test_get_oen_post_not_exist(authorized_client, test_posts):
-    res = authorized_client.get('/posts/5')
+    res = authorized_client.get("/posts/5")
     assert res.status_code == 404
-    
+
+
 def test_get_oen_post(authorized_client, test_posts):
-    res = authorized_client.get(f'/posts/{test_posts[0].id}')
+    res = authorized_client.get(f"/posts/{test_posts[0].id}")
     post = schemas.PostOut(**res.json())
     assert post.Post.id == test_posts[0].id
     assert post.Post.content == test_posts[0].content
     assert post.Post.title == test_posts[0].title
 
 
-@pytest.mark.parametrize("title, content, published", [
-    ("new title", "new content", True),
-    ("eatting menu", "pizza and coke", False),
-    ("todos", "programming\nDarkest Dungeon", False),
-])
+@pytest.mark.parametrize(
+    "title, content, published",
+    [
+        ("new title", "new content", True),
+        ("eatting menu", "pizza and coke", False),
+        ("todos", "programming\nDarkest Dungeon", False),
+    ],
+)
 def test_create_post(authorized_client, title, content, published, test_user):
-    res = authorized_client.post(
-        '/posts/',
-        json={"title": title,"content": content,"published": published}
-        )
-    
+    data = {"title": title, "content": content, "published": published}
+    res = authorized_client.post("/posts/", json=data)
+
     created_post = schemas.Post(**res.json())
     assert res.status_code == 201
     assert created_post.title == title
     assert created_post.content == content
     assert created_post.published == published
-    assert created_post.owner_id == test_user['id']
+    assert created_post.owner_id == test_user["id"]
 
 
-def test_create_post_default_published_true(authorized_client, test_user, test_posts):
+def test_create_post_default_published_true(
+        authorized_client, test_user, test_posts):
+
     res = authorized_client.post(
-        '/posts/',
-        json={"title": "arbitary","content": "sub content"}
-        )
-    
+        "/posts/", json={"title": "arbitary", "content": "sub content"}
+    )
+
     created_post = schemas.Post(**res.json())
     assert res.status_code == 201
     assert created_post.title == "arbitary"
     assert created_post.content == "sub content"
-    assert created_post.published == True
-    assert created_post.owner_id == test_user['id']
+    assert created_post.published
+    assert created_post.owner_id == test_user["id"]
 
 
 def test_unauthorized_user_create_post(client):
-    res = client.post(
-        '/posts/',
-        json={"title": "arbitary","content": "sub content"}
-        )
+    data = {"title": "arbitary", "content": "sub content"}
+    res = client.post("/posts/", json=data)
     assert res.status_code == 401
 
 
 def test_unauthorized_user_delete_post(client, test_posts):
-    res = client.delete(f'/posts/{test_posts[0].id}')
+    res = client.delete(f"/posts/{test_posts[0].id}")
     assert res.status_code == 401
 
 
 def test_delete_post_success(authorized_client, test_user, test_posts):
-    res = authorized_client.delete(f'/posts/{test_posts[0].id}')
+    res = authorized_client.delete(f"/posts/{test_posts[0].id}")
     assert res.status_code == 204
 
 
 def test_delete_post_non_exist(authorized_client, test_user, test_posts):
-    res = authorized_client.delete(f'/posts/8888')
+    res = authorized_client.delete("/posts/8888")
     assert res.status_code == 404
 
 
 def test_delete_other_user_post(authorized_client, test_user, test_posts):
-    res = authorized_client.delete(
-        f'/posts/{test_posts[3].id}')
+    res = authorized_client.delete(f"/posts/{test_posts[3].id}")
     assert res.status_code == 403
 
 
 def test_update_post(authorized_client, test_user, test_posts):
     data = {
         "title": "update title",
-        "content":"update content",
-        "id": test_posts[0].id
+        "content": "update content",
+        "id": test_posts[0].id,
     }
-    
-    res = authorized_client.put(f'/posts/{test_posts[0].id}', json=data)
+
+    res = authorized_client.put(f"/posts/{test_posts[0].id}", json=data)
     assert res.status_code == 200
 
     updated_post = schemas.Post(**res.json())
-    assert updated_post.title == data['title']
-    assert updated_post.content == data['content']
+    assert updated_post.title == data["title"]
+    assert updated_post.content == data["content"]
 
 
-def test_update_other_user_post(authorized_client, 
-                                test_user, 
-                                test_user2, 
-                                test_posts):
+def test_update_other_user_post(
+        authorized_client, test_user, test_user2, test_posts):
 
     data = {
         "title": "update title",
-        "content":"update content",
-        "id": test_posts[3].id
+        "content": "update content",
+        "id": test_posts[3].id,
     }
-    
-    res = authorized_client.put(f'/posts/{test_posts[3].id}', json=data)
+
+    res = authorized_client.put(f"/posts/{test_posts[3].id}", json=data)
     assert res.status_code == 403
 
-    
+
 def test_unauthorized_user_update_post(client, test_user, test_posts):
     data = {
         "title": "update title",
-        "content":"update content",
-        "id": test_posts[0].id
+        "content": "update content",
+        "id": test_posts[0].id,
     }
-    res = client.put(f'/posts/{test_posts[0].id}', json=data)
+    res = client.put(f"/posts/{test_posts[0].id}", json=data)
     assert res.status_code == 401
 
 
 def test_update_post_non_exist(authorized_client, test_user, test_posts):
     data = {
         "title": "update title",
-        "content":"update content",
-        "id": test_posts[0].id
+        "content": "update content",
+        "id": test_posts[0].id,
     }
-    res = authorized_client.put(f'/posts/8888', json=data)
+    res = authorized_client.put("/posts/8888", json=data)
     assert res.status_code == 404
